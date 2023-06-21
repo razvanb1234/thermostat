@@ -1,0 +1,244 @@
+C51 COMPILER V9.60.7.0   PROIECT                                                           05/26/2023 18:48:46 PAGE 1   
+
+
+C51 COMPILER V9.60.7.0, COMPILATION OF MODULE PROIECT
+OBJECT MODULE PLACED IN .\Objects\proiect.obj
+COMPILER INVOKED BY: C:\Keil_v5\C51\BIN\C51.EXE proiect.c OPTIMIZE(8,SPEED) BROWSE DEBUG OBJECTEXTEND PRINT(.\Listings\p
+                    -roiect.lst) TABS(2) OBJECT(.\Objects\proiect.obj)
+
+line level    source
+
+   1          // Program for LCD Interfacing with 8051 Microcontroller (AT89S52) 
+   2          #include<reg51.h>
+   3          #include <stdio.h>
+   4          #define display_port P2      //Data pins connected to port 2 on microcontroller
+   5          sbit rs = P3^0;  //RS pin connected to pin 2 of port 3
+   6          sbit rw = P3^1;  // RW pin connected to pin 3 of port 3
+   7          sbit e =  P3^2;  //E pin connected to pin 4 of port 3
+   8          sbit lamp= P3^6;
+   9          sbit motor= P3^7;
+  10          sbit b1=P3^4;
+  11          sbit b2= P3^5;
+  12          sbit pin_1W=P1^0;
+  13          unsigned char sensorBuffer[2];
+  14          signed int temp;
+  15          float currentTemp, setTemp;
+  16          
+  17          //void init_1W(void);
+  18          //unsigned char readByte_1W(void);
+  19          //void writeByte_1W(unsigned char dat);
+  20          //void read_sensor(void);
+  21          void delay(unsigned int i){
+  22   1        while(i--);
+  23   1      }
+  24          void msdelay(unsigned int time)  // Function for creating delay in milliseconds.
+  25          {
+  26   1      
+  27   1          unsigned i,j ;
+  28   1      
+  29   1          for(i=0;i<time;i++)    
+  30   1      
+  31   1          for(j=0;j<1275;j++);
+  32   1      }
+  33          
+  34          void lcd_cmd(unsigned char command)  //Function to send command instruction to LCD
+  35          
+  36          {
+  37   1      
+  38   1          display_port = command;
+  39   1      
+  40   1          rs= 0;
+  41   1      
+  42   1          rw=0;
+  43   1      
+  44   1          e=1;
+  45   1      
+  46   1          msdelay(1);
+  47   1      
+  48   1          e=0;
+  49   1      
+  50   1      }
+  51          
+  52          
+  53          void lcd_data(unsigned char disp_data)  //Function to send display data to LCD
+  54          
+C51 COMPILER V9.60.7.0   PROIECT                                                           05/26/2023 18:48:46 PAGE 2   
+
+  55          {
+  56   1          display_port = disp_data;
+  57   1          rs= 1;
+  58   1          rw=0;
+  59   1          e=1;
+  60   1          msdelay(1);
+  61   1          e=0;
+  62   1      }
+  63          
+  64          
+  65           void lcd_init()    //Function to prepare the LCD  and get it ready
+  66          
+  67          {
+  68   1      
+  69   1          lcd_cmd(0x38);  // for using 2 lines and 5X7 matrix of LCD
+  70   1      
+  71   1          msdelay(10);
+  72   1      
+  73   1          lcd_cmd(0x0F);  // turn display ON, cursor blinking
+  74   1      
+  75   1          msdelay(10);
+  76   1      
+  77   1          lcd_cmd(0x01);  //clear screen
+  78   1      
+  79   1          msdelay(10);
+  80   1      
+  81   1          lcd_cmd(0x81);  // bring cursor to position 1 of line 1
+  82   1      
+  83   1          msdelay(10);
+  84   1      
+  85   1      }
+  86          void init_1W(void)
+  87          {
+  88   1          unsigned char x=0;
+  89   1          pin_1W = 1;
+  90   1          delay(8);
+  91   1          pin_1W = 0;
+  92   1          delay(80);
+  93   1          pin_1W = 1;
+  94   1          delay(14);
+  95   1          x=pin_1W;
+  96   1          delay(20);
+  97   1      }
+  98          
+  99          unsigned char readByte_1W(void)
+ 100          {
+ 101   1          unsigned char i=0;
+ 102   1          unsigned char dat = 0;
+ 103   1          for (i=8;i>0;i--)
+ 104   1          {
+ 105   2            pin_1W = 0;
+ 106   2            dat>>=1;
+ 107   2            pin_1W = 1;
+ 108   2            if(pin_1W)
+ 109   2            dat|=0x80;
+ 110   2            delay(4);
+ 111   2          }
+ 112   1          return(dat);
+ 113   1      }
+ 114          
+ 115          void writeByte_1W(unsigned char dat)
+ 116          {
+C51 COMPILER V9.60.7.0   PROIECT                                                           05/26/2023 18:48:46 PAGE 3   
+
+ 117   1          unsigned char i=0;
+ 118   1          for (i=8; i>0; i--)
+ 119   1          {
+ 120   2            pin_1W = 0;
+ 121   2            pin_1W = dat&0x01;
+ 122   2            delay(5);
+ 123   2            pin_1W = 1;
+ 124   2            dat>>=1;
+ 125   2          }
+ 126   1          delay(4);
+ 127   1      }
+ 128          
+ 129          //temperature read for DS18B20
+ 130          //raw 16 bit value in sensorBuffer
+ 131          void read_sensor(void)
+ 132          {
+ 133   1          init_1W();
+ 134   1          writeByte_1W(0xCC); //skip ROM
+ 135   1          writeByte_1W(0x44); //convert T
+ 136   1          init_1W();
+ 137   1          writeByte_1W(0xCC); //skip ROM
+ 138   1          writeByte_1W(0xBE); //read scratchpad
+ 139   1          sensorBuffer[0]=readByte_1W();
+ 140   1          sensorBuffer[1]=readByte_1W();
+ 141   1      }
+ 142          
+ 143          
+ 144          void getPress(){
+ 145   1        if(b1==0){
+ 146   2          setTemp= setTemp+1.0f;
+ 147   2        return;
+ 148   2      }
+ 149   1        if(b2==0){
+ 150   2          setTemp= setTemp-1.0f;
+ 151   2        return;
+ 152   2      }
+ 153   1      }
+ 154          void main()
+ 155          
+ 156          {
+ 157   1          char display[33];
+ 158   1          int oldTemp=0;
+ 159   1          motor=0;
+ 160   1          lamp=0;
+ 161   1          lcd_init();
+ 162   1          setTemp=21.0f;
+ 163   1          
+ 164   1      while(1){
+ 165   2        int l=0;
+ 166   2        int h=0;  
+ 167   2          read_sensor();
+ 168   2          temp = sensorBuffer[0]; //lsb
+ 169   2          temp &= 0x00FF;
+ 170   2          temp |= (sensorBuffer[1] << 8);
+ 171   2          //convert raw sensor data to temperature
+ 172   2          currentTemp = temp * 0.0625;
+ 173   2          //format line 1
+ 174   2          
+ 175   2        getPress();
+ 176   2        if (b1 == 0 || b2==0 || oldTemp!=currentTemp){
+ 177   3          sprintf(display, "T  = %.2f", currentTemp);
+ 178   3          lcd_cmd(0x01);
+C51 COMPILER V9.60.7.0   PROIECT                                                           05/26/2023 18:48:46 PAGE 4   
+
+ 179   3        lcd_cmd(0x81);
+ 180   3        
+ 181   3        while(display[l] != '\0'){
+ 182   4          lcd_data(display[l]);
+ 183   4          l++;
+ 184   4          msdelay(10);
+ 185   4        }
+ 186   3        
+ 187   3          lcd_cmd(0xC0);
+ 188   3          sprintf(display, "Set T = %.2f",setTemp);
+ 189   3        while(display[h] != '\0'){
+ 190   4        lcd_data(display[h]);
+ 191   4          h++;
+ 192   4          msdelay(10);
+ 193   4        }
+ 194   3      }
+ 195   2        if(currentTemp>setTemp){
+ 196   3          motor=1;
+ 197   3          lamp=0;
+ 198   3        }
+ 199   2        else if(currentTemp<setTemp){
+ 200   3          motor=0;
+ 201   3          lamp=1;
+ 202   3        }
+ 203   2        else{
+ 204   3          motor=0;
+ 205   3          lamp=0;
+ 206   3        }
+ 207   2        
+ 208   2        
+ 209   2        oldTemp=currentTemp;
+ 210   2        msdelay(100);
+ 211   2        
+ 212   2        }
+ 213   1        }
+ 214          
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =    621    ----
+   CONSTANT SIZE    =     23    ----
+   XDATA SIZE       =   ----    ----
+   PDATA SIZE       =   ----    ----
+   DATA SIZE        =     12      39
+   IDATA SIZE       =   ----    ----
+   BIT SIZE         =   ----    ----
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)
